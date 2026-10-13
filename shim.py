@@ -523,6 +523,9 @@ def main():
     srv = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)   # loopback only, by design
     srv.key = api_key()
     srv.hosts = {f"{h}:{args.port}" for h in ("127.0.0.1", "localhost", "[::1]")}
+    # A client behind a forwarder names the forwarder (QEMU's user network: 10.0.2.2); list such
+    # Host values here, exactly as the client sends them. Each one widens what a rebound name can be.
+    srv.hosts |= {h.strip().lower() for h in os.environ.get("SHIM_HOSTS", "").split(",") if h.strip()}
     source = "SHIM_API_KEY" if os.environ.get("SHIM_API_KEY") else str(KEY_FILE)
     print(f"[shim] http://127.0.0.1:{args.port}/v1/messages -> claude -p  (cwd {cwd}, key from {source})",
           file=sys.stderr, flush=True)

@@ -13,7 +13,7 @@ python test_loop.py            # a 3-turn agent loop: search_files -> read_file 
 ```
 
 Stdlib only. Environment: `SHIM_PORT`, `SHIM_MODEL` (force one model), `SHIM_TIMEOUT` (s, 300),
-`SHIM_MAX_PARALLEL` (4), `SHIM_API_KEY`.
+`SHIM_MAX_PARALLEL` (4), `SHIM_API_KEY`, `SHIM_HOSTS`.
 
 ## The key
 
@@ -29,6 +29,10 @@ export ANTHROPIC_API_KEY=$(cat ~/.claude-p-shim-key)
 
 Without the key a request gets 401; with a foreign `Host` (a rebound DNS name) it gets 403. A web
 page cannot send either header cross-origin without a preflight, and `OPTIONS` is not served.
+
+A client that reaches the shim through a forwarder sends the forwarder's name as `Host`: a guest
+under QEMU's user-mode network sends `10.0.2.2`. Allow such values, exactly as sent and
+comma-separated, with `SHIM_HOSTS=10.0.2.2,10.0.2.2:8765`. The key is still required.
 
 ## How a request is translated
 
