@@ -8,13 +8,17 @@
 Passes when the model calls search_files, then read_file, and answers with the planted fact.
 """
 import json
+import os
 import re
+import shutil
 import sys
 import tempfile
 import urllib.request
 from pathlib import Path
 
-BASE = "http://127.0.0.1:8765"
+from shim import api_key
+
+BASE = f"http://127.0.0.1:{os.environ.get('SHIM_PORT', '8765')}"
 MODEL = "claude-haiku-4-5-20251001"
 SECRET = "heliotrope-47"
 
@@ -36,7 +40,10 @@ def fixture() -> Path:
 
 def run_tool(root: Path, name: str, args: dict) -> str:
     if name == "search_files":
-        rx = re.compile(args["pattern"], re.I)
+        try:
+            rx = re.compile(args["pattern"], re.I)
+        except re.error as e:
+            return f"invalid regex: {e}"
         return "\n".join(p.name for p in sorted(root.iterdir()) if rx.search(p.read_text(encoding="utf-8"))) or "(no matches)"
     if name == "read_file":
         p = root / Path(args["path"]).name
@@ -46,7 +53,7 @@ def run_tool(root: Path, name: str, args: dict) -> str:
 
 def post(body: dict) -> dict:
     r = urllib.request.Request(BASE + "/v1/messages", json.dumps(body).encode(),
-                               {"content-type": "application/json", "x-api-key": "shim"})
+                               {"content-type": "application/json", "x-api-key": api_key()})
     with urllib.request.urlopen(r, timeout=600) as resp:
         return json.loads(resp.read())
 
@@ -61,8 +68,16 @@ def main():
     client = None
     if use_sdk:
         import anthropic
-        client = anthropic.Anthropic(base_url=BASE, api_key="shim")
+        client = anthropic.Anthropic(base_url=BASE, api_key=api_key())
     root = fixture()
+    try:
+        loop(root, client)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def loop(root: Path, client):
+    use_sdk = client is not None
     messages = [{"role": "user", "content": "What is the staging deploy passphrase? It is somewhere in my notes."}]
     seen = []
     for turn in range(1, 7):
