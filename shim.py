@@ -41,6 +41,7 @@ MODEL_OVERRIDE = os.environ.get("SHIM_MODEL")           # force one model whatev
 PARALLEL = threading.Semaphore(int(os.environ.get("SHIM_MAX_PARALLEL", "4")))
 PING_EVERY = 5                                           # seconds between SSE keep-alives
 POLL = 0.5                                               # seconds between checks for a gone client
+DRAIN_MAX = 8 << 20                                      # most of a refused body we will read off
 KEY_FILE = Path.home() / ".claude-p-shim-key"
 
 # The reply shape `claude -p --json-schema` is held to. `input` is left open: each tool brings its
@@ -388,18 +389,34 @@ class Handler(BaseHTTPRequestHandler):
         a web page or another local process from spending the login at all. A browser cannot send
         either header cross-origin without a preflight, and OPTIONS is not served.
         """
-        self.close_connection = True         # a refused request's body is never read
+        why = None
         if (self.headers.get("Host") or "").lower() not in self.server.hosts:
-            self._error(403, "permission_error", "Host is not this shim's loopback address")
-            return True
-        if need_key:
+            why = (403, "permission_error", "Host is not this shim's loopback address")
+        elif need_key:
             auth = self.headers.get("Authorization") or ""
             given = self.headers.get("x-api-key") or (auth[7:] if auth[:7].lower() == "bearer " else "")
             if not hmac.compare_digest(given.encode("utf-8"), self.server.key.encode("utf-8")):
-                self._error(401, "authentication_error", "missing or wrong shim key (see README)")
-                return True
-        self.close_connection = False
-        return False
+                why = (401, "authentication_error", "missing or wrong shim key (see README)")
+        if why is None:
+            return False
+        self.close_connection = True
+        self._drain()
+        self._error(*why)
+        return True
+
+    def _drain(self):
+        """Read a refused request's body off the socket and throw it away. Closing with it unread
+        resets the connection, and the client sees that instead of the reason it was refused."""
+        try:
+            left = min(int(self.headers.get("Content-Length", "0")), DRAIN_MAX)
+            self.connection.settimeout(5)
+            while left > 0:
+                chunk = self.rfile.read(min(left, 65536))
+                if not chunk:
+                    break
+                left -= len(chunk)
+        except (ValueError, OSError):
+            pass
 
     def _client_gone(self) -> bool:
         """True once the peer has closed: the socket turns readable and a peek returns nothing.

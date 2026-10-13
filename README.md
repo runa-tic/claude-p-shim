@@ -31,8 +31,9 @@ Without the key a request gets 401; with a foreign `Host` (a rebound DNS name) i
 page cannot send either header cross-origin without a preflight, and `OPTIONS` is not served.
 
 A client that reaches the shim through a forwarder sends the forwarder's name as `Host`: a guest
-under QEMU's user-mode network sends `10.0.2.2`. Allow such values, exactly as sent and
-comma-separated, with `SHIM_HOSTS=10.0.2.2,10.0.2.2:8765`. The key is still required.
+under QEMU's user-mode network sends `10.0.2.2`. Allow such values, comma-separated, with
+`SHIM_HOSTS=10.0.2.2`. They are matched exactly as the client sends them, so a client that puts
+the port in `Host` needs `10.0.2.2:8765` instead. The key is still required.
 
 ## How a request is translated
 
