@@ -62,7 +62,8 @@ It is a translation layer, not the API:
   Its habit of calling a named tool directly is strong: with a soft prompt it called
   `search_files` natively, got "No such tool available" three times and gave up. The prompt now
   says that `StructuredOutput` is the only callable function. Verified 3/3 on the test loop with
-  Haiku 4.5 (2026-10-04); not tested beyond that.
+  Haiku 4.5, non-streaming (2026-10-13, CLI 2.1.296); not tested beyond that. The `--sdk`
+  streaming path of the test has not been run against a real login.
 - History is flattened; images and thinking blocks are dropped.
 - Every request starts a new CLI process: about 7–8 s per turn here, and no prompt caching.
 - Streaming is the finished reply replayed as SSE events, with pings while waiting.
@@ -72,6 +73,13 @@ It is a translation layer, not the API:
 - Token counts include the CLI's own overhead.
 - `--bare` is deliberately not used: it reads only `ANTHROPIC_API_KEY`, never the CLI login.
 
+Not affiliated with or endorsed by Anthropic. It spends the `claude` login of whoever runs it;
+whether that use fits your plan's terms is yours to check.
+
 Local, personal use: it binds to loopback only, asks for its key, and runs under whatever login
 `claude` already has. Do not use it as the backend for a published measurement of another agent; its own errors
 are indistinguishable from the agent's.
+
+## Licence
+
+MIT, see `LICENSE`.

@@ -274,7 +274,7 @@ def call_claude(req: dict, cancel: threading.Event | None = None) -> dict:
     if tools:
         argv += ["--json-schema", REPLY_SCHEMA]
     argv += ["--tools", ""]                      # variadic, so last with its one empty value
-    env = {**os.environ, "CLAUDE_BRAIN_NO_HOOK": "1", "ENABLE_CLAUDEAI_MCP_SERVERS": "false"}
+    env = {**os.environ, "ENABLE_CLAUDEAI_MCP_SERVERS": "false"}
     try:
         rc, stdout, stderr = run_cli(argv, render_transcript(req.get("messages"), bool(tools)),
                                      cwd, env, cancel or threading.Event())
